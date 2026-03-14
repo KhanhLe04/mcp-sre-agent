@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRE Investigation Flow"
+  short_description: "Design RCA and evidence workflows"
+  default_prompt: "Use $mcp-sre-investigation to design or implement incident investigation and root cause analysis flows."

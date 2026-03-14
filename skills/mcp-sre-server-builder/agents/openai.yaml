@@ -1,0 +1,4 @@
+interface:
+  display_name: "MCP Server Builder"
+  short_description: "Implement robust MCP server surfaces"
+  default_prompt: "Use $mcp-sre-server-builder to implement or refine MCP servers, tools, resources, and tests."

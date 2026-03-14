@@ -1,0 +1,4 @@
+interface:
+  display_name: "MCP SRE Workspace"
+  short_description: "Guide repo-wide MCP SRE development"
+  default_prompt: "Use $mcp-sre-workspace to plan or execute development work in this MCP SRE repository."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRE Platform Adapters"
+  short_description: "Build K8s, metrics, and log adapters"
+  default_prompt: "Use $mcp-sre-platform-adapters to build Kubernetes, Prometheus, and log system adapters for this project."
