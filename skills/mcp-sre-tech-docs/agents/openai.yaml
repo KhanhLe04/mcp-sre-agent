@@ -1,0 +1,4 @@
+interface:
+  display_name: "MCP Tech Docs"
+  short_description: "Write clear technical project docs"
+  default_prompt: "Use $mcp-sre-tech-docs to draft or refine technical documentation for this MCP SRE project."

@@ -1,4 +1,4 @@
-"""Cluster MCP server and its tool registrations."""
+"""Cluster MCP tools related to nodes."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from functools import lru_cache
 from mcp.server.fastmcp import FastMCP
 
 from mcp_sre_agent.adapters.kubernetes import KubernetesAccessError, KubernetesClusterService
-from mcp_sre_agent.app.config import get_settings
 from mcp_sre_agent.domain.cluster import ListNodesResult
 
 
@@ -18,19 +17,8 @@ def get_cluster_service() -> KubernetesClusterService:
     return KubernetesClusterService()
 
 
-def create_cluster_server() -> FastMCP:
-    """Build the cluster MCP server."""
-
-    settings = get_settings()
-    server = FastMCP(
-        "cluster",
-        host=settings.host,
-        port=settings.port,
-        log_level=settings.log_level,
-        sse_path=settings.sse_path,
-        message_path=settings.message_path,
-        streamable_http_path=settings.streamable_http_path,
-    )
+def register_node_tools(server: FastMCP) -> None:
+    """Register node-related tools on the cluster server."""
 
     @server.tool(
         name="list_nodes",
@@ -41,5 +29,3 @@ def create_cluster_server() -> FastMCP:
             return get_cluster_service().list_nodes()
         except KubernetesAccessError as exc:
             raise RuntimeError(str(exc)) from exc
-
-    return server

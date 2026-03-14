@@ -1,53 +1,17 @@
-"""Kubernetes adapter helpers for the cluster MCP server."""
+"""Kubernetes node operations."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from functools import lru_cache
-from pathlib import Path
-
-from kubernetes import client, config
+from kubernetes import client
 from kubernetes.client.exceptions import ApiException
-from kubernetes.config.config_exception import ConfigException
 
+from mcp_sre_agent.adapters.kubernetes.client import build_core_v1_api
 from mcp_sre_agent.app.config import get_settings
 from mcp_sre_agent.domain.cluster import ListNodesResult, NodeSummary
 
 
-class KubernetesConfigurationError(RuntimeError):
-    """Raised when no Kubernetes configuration can be loaded."""
-
-
 class KubernetesAccessError(RuntimeError):
     """Raised when a Kubernetes API request fails and details should stay sanitized."""
-
-
-@dataclass(frozen=True)
-class KubernetesConnectionInfo:
-    """Sanitized information about how the adapter is configured to connect."""
-
-    source: str
-    kubeconfig_label: str
-    context: str | None
-
-
-def _mask_path(path: str | None) -> str:
-    if not path:
-        return "<default>"
-
-    name = Path(path).name
-    return f".../{name}" if name else "<default>"
-
-
-def planned_connection_info() -> KubernetesConnectionInfo:
-    """Return sanitized connection intent before loading any credentials."""
-
-    settings = get_settings()
-    return KubernetesConnectionInfo(
-        source="kubeconfig-or-incluster",
-        kubeconfig_label=_mask_path(settings.kubeconfig),
-        context=settings.kube_context,
-    )
 
 
 def _node_roles(labels: dict[str, str] | None) -> list[str]:
@@ -83,28 +47,6 @@ def _internal_ip(addresses: list[object] | None) -> str | None:
             return getattr(address, "address", None)
 
     return None
-
-
-@lru_cache(maxsize=1)
-def build_core_v1_api() -> client.CoreV1Api:
-    """Create a configured CoreV1Api client."""
-
-    settings = get_settings()
-
-    try:
-        config.load_kube_config(
-            config_file=settings.kubeconfig,
-            context=settings.kube_context,
-        )
-    except ConfigException:
-        try:
-            config.load_incluster_config()
-        except ConfigException as exc:
-            raise KubernetesConfigurationError(
-                "Unable to load Kubernetes configuration from kubeconfig or in-cluster settings."
-            ) from exc
-
-    return client.CoreV1Api()
 
 
 class KubernetesClusterService:

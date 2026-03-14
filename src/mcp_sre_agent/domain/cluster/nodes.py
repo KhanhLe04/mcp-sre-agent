@@ -1,4 +1,4 @@
-"""Domain models for cluster-focused MCP tools."""
+"""Domain models for cluster node MCP tools."""
 
 from __future__ import annotations
 
