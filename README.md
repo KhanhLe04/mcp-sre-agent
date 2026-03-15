@@ -19,6 +19,12 @@ SRE-focused MCP servers for Kubernetes, metrics, logs, and investigation workflo
 
 ### Current usage
 
+Configuration precedence:
+
+1. Explicit process environment variables
+2. Local `.env` file
+3. Defaults in `src/mcp_sre_agent/app/config.py`
+
 Run the cluster MCP server over stdio:
 
 ```bash

@@ -4,25 +4,27 @@
 
 This document explains the Kubernetes MCP capability currently implemented in this repository. It is intended for contributors who need to understand how the server is structured, how it connects to Kubernetes, how it is configured and secured, and how to extend it safely.
 
-At the moment, the project exposes one MCP server, `cluster`, with one tool, `list_nodes`. The implementation is intentionally narrow: it proves the project structure, transport model, Kubernetes integration path, and baseline security posture before more tools are added.
+At the moment, the project exposes one MCP server, `cluster`, with three tools: `list_nodes`, `get_node`, and `list_namespace_pods`. The implementation is intentionally narrow: it proves the project structure, transport model, Kubernetes integration path, and baseline security posture before more tools are added.
 
 ## Current Scope
 
 The current Kubernetes MCP implementation provides:
 
 - one FastMCP server named `cluster`
-- one tool named `list_nodes`
+- three tools: `list_nodes`, `get_node`, and `list_namespace_pods`
 - Kubernetes client initialization through kubeconfig or in-cluster configuration
 - typed, reduced responses instead of raw Kubernetes API objects
 - configurable MCP transports and HTTP bind settings
 - sanitized startup logging and sanitized upstream error handling
+- namespace-scoped pod listing as the first non-node workload visibility tool
 
 It does not yet provide:
 
 - write operations against the Kubernetes API
-- namespace-scoped workload or pod inspection
+- rollout or deployment inspection
+- recent event retrieval
+- service or namespace inspection
 - RBAC introspection
-- caching beyond Python process-level object reuse
 - health endpoints or readiness probes
 - persistent investigation state
 
@@ -61,13 +63,15 @@ Files:
 
 - `src/mcp_sre_agent/servers/cluster/server.py`
 - `src/mcp_sre_agent/servers/cluster/tools_nodes.py`
+- `src/mcp_sre_agent/servers/cluster/tools_pods.py`
+- `src/mcp_sre_agent/servers/errors.py`
 
 Responsibilities:
 
 - create a `FastMCP` server named `cluster`
 - configure server host, port, log level, and HTTP paths from settings
-- register the `list_nodes` MCP tool
-- translate sanitized adapter errors into safe MCP-facing runtime errors
+- register Kubernetes MCP tools by tool family
+- translate internal failures into safe MCP-facing runtime errors using shared error primitives
 
 ### 3. Adapter and service layer
 
@@ -76,42 +80,45 @@ Files:
 - `src/mcp_sre_agent/adapters/kubernetes/config.py`
 - `src/mcp_sre_agent/adapters/kubernetes/client.py`
 - `src/mcp_sre_agent/adapters/kubernetes/nodes.py`
+- `src/mcp_sre_agent/adapters/kubernetes/pods.py`
 
 Responsibilities:
 
 - load Kubernetes configuration
 - build the Kubernetes `CoreV1Api` client
-- encapsulate the cluster read logic in `KubernetesClusterService`
-- reduce Kubernetes node objects into a small typed summary
+- encapsulate cluster read logic in dedicated services
+- reduce Kubernetes objects into small typed summaries
 - sanitize configuration and API errors
 
 ### 4. Domain model layer
 
 Files:
 
-- `src/mcp_sre_agent/domain/cluster/__init__.py`
 - `src/mcp_sre_agent/domain/cluster/nodes.py`
+- `src/mcp_sre_agent/domain/cluster/pods.py`
+- `src/mcp_sre_agent/domain/common/`
 
 Responsibilities:
 
-- define the typed output models returned by the tool
+- define typed cluster output models
+- define shared scope and error primitives
 - keep the MCP surface stable even if upstream Kubernetes objects change
 
 ## Request Flow
 
-The request flow for `list_nodes` is:
+The request flow for the current tools is:
 
 1. A host or client starts the `cluster` server through the CLI.
 2. The CLI loads `Settings` and configures logging.
 3. The CLI logs the selected transport and sanitized Kubernetes connection intent.
 4. The CLI creates the `cluster` FastMCP server and starts the requested transport.
-5. The MCP client invokes the `list_nodes` tool.
-6. The server calls `get_cluster_service().list_nodes()`.
-7. The service initializes `CoreV1Api` on first use through `build_core_v1_api()`.
-8. The adapter loads Kubernetes configuration from kubeconfig or in-cluster config.
-9. The adapter calls `CoreV1Api.list_node()`.
-10. The adapter reduces each node to a `NodeSummary`.
-11. The tool returns a `ListNodesResult` to the MCP client.
+5. The MCP client invokes one of the registered tools.
+6. The server validates tool inputs or scope where needed.
+7. The server delegates to an adapter-backed service.
+8. The adapter loads Kubernetes configuration on first use.
+9. The adapter calls the Kubernetes API.
+10. The adapter reduces the upstream object or list into typed models.
+11. The server returns the typed result or a serialized safe error payload.
 
 ## Code Map
 
@@ -122,30 +129,27 @@ The current implementation is centered in these files:
 - `src/mcp_sre_agent/app/logging.py`
 - `src/mcp_sre_agent/servers/cluster/server.py`
 - `src/mcp_sre_agent/servers/cluster/tools_nodes.py`
+- `src/mcp_sre_agent/servers/cluster/tools_pods.py`
+- `src/mcp_sre_agent/servers/errors.py`
 - `src/mcp_sre_agent/adapters/kubernetes/config.py`
 - `src/mcp_sre_agent/adapters/kubernetes/client.py`
 - `src/mcp_sre_agent/adapters/kubernetes/nodes.py`
+- `src/mcp_sre_agent/adapters/kubernetes/pods.py`
 - `src/mcp_sre_agent/domain/cluster/nodes.py`
+- `src/mcp_sre_agent/domain/cluster/pods.py`
+- `src/mcp_sre_agent/domain/common/`
 - `tests/test_cluster_service.py`
 - `tests/test_kubernetes_security.py`
 
-## Tool Contract
+## Tool Contracts
 
-### Tool name
-
-`list_nodes`
-
-### Purpose
+### `list_nodes`
 
 Return a reduced summary of available Kubernetes nodes.
 
-### Output model
+Output model:
 
-The tool returns `ListNodesResult`, which contains:
-
-- `cluster`: selected kube context when provided, otherwise `null`
-- `count`: total number of returned nodes
-- `nodes`: list of `NodeSummary`
+- `ListNodesResult`
 
 Each `NodeSummary` currently contains:
 
@@ -157,9 +161,48 @@ Each `NodeSummary` currently contains:
 - `os_image`
 - `container_runtime`
 
-### Why the output is reduced
+### `get_node`
 
-The server does not return raw Kubernetes node objects because that would create unnecessary coupling to upstream schemas, increase token cost, and increase the chance of leaking irrelevant fields. The project standard is to return reduced, typed, task-specific data structures.
+Return one reduced node summary by node name.
+
+Output model:
+
+- `NodeSummary`
+
+This tool uses the same reduced shape as `list_nodes`, which keeps the node contract consistent across list and single-item operations.
+
+### `list_namespace_pods`
+
+Return reduced pod summaries for one namespace.
+
+Output model:
+
+- `ListNamespacePodsResult`
+
+Each `PodSummary` currently contains:
+
+- `name`
+- `namespace`
+- `phase`
+- `node_name`
+- `pod_ip`
+
+This tool is namespace-scoped by design. It does not expose cluster-wide pod listing because that would be a higher-cardinality and less safe default.
+
+### Why the outputs are reduced
+
+The server does not return raw Kubernetes objects because that would create unnecessary coupling to upstream schemas, increase token cost, and increase the chance of leaking irrelevant fields. The project standard is to return reduced, typed, task-specific data structures.
+
+## Shared Primitives Used by the Kubernetes Tools
+
+The current Kubernetes toolset uses shared domain primitives from `src/mcp_sre_agent/domain/common/`.
+
+Current shared usage includes:
+
+- `NamespaceScope` to validate non-empty namespace input for `list_namespace_pods`
+- `ErrorCategory` and `ToolError` to serialize safe error payloads in the server layer
+
+This gives the project a path to consistent error and scope handling as metrics, logs, and investigation features are added.
 
 ## Transport Model
 
@@ -254,11 +297,15 @@ The kubeconfig path is masked to `.../<filename>` instead of logging the full lo
 
 ### Sanitized errors
 
-When Kubernetes API access fails during `list_nodes`, the adapter raises:
+The server returns serialized safe error payloads for MCP tool failures. These payloads carry a shared category, a safe message, and retryability information.
 
-- `KubernetesAccessError("Kubernetes API request failed while listing nodes.")`
+Examples of current categories:
 
-This prevents raw upstream exception details from leaking through MCP responses or logs.
+- `not_found`
+- `invalid_input`
+- `upstream_unavailable`
+
+The implementation does not forward raw Kubernetes API exception bodies to the caller.
 
 ### Prompt injection and secret-handling implications
 
@@ -324,6 +371,8 @@ This test verifies that:
 
 - nodes are reduced into the expected model
 - nodes are sorted by name
+- single-node lookup returns the expected reduced summary
+- namespace-scoped pod listing returns reduced sorted pod summaries
 - readiness, roles, and internal IP fields are extracted correctly
 
 ### Security and sanitization
@@ -334,6 +383,7 @@ This test verifies that:
 
 - kubeconfig paths are masked in planned connection info
 - Kubernetes API failures return a sanitized message instead of raw exception content
+- the shared tool error helper serializes safe error payloads
 
 ## How to Extend This Tool
 
@@ -343,10 +393,10 @@ Contributors should follow this process when adding a new Kubernetes MCP tool.
 
 Define the operator task clearly, for example:
 
-- get one node by name
-- list pods in a namespace
 - inspect rollout status for a deployment
 - fetch recent events for a workload
+- inspect one service by name
+- inspect one namespace by name
 
 ### 2. Add a domain model first
 
@@ -356,7 +406,7 @@ Avoid returning raw Kubernetes responses.
 
 ### 3. Add the adapter method
 
-Extend `KubernetesClusterService` or create a dedicated adapter/service if the responsibility is different.
+Extend an existing Kubernetes service or create a dedicated service module if the responsibility is different.
 
 The adapter should:
 
@@ -366,7 +416,7 @@ The adapter should:
 
 ### 4. Register the MCP tool
 
-Add the tool registration in `src/mcp_sre_agent/servers/cluster/tools_nodes.py`.
+Add the tool registration in the appropriate cluster tool module, for example `src/mcp_sre_agent/servers/cluster/tools_nodes.py` or `src/mcp_sre_agent/servers/cluster/tools_pods.py`.
 
 The server layer should stay thin and mostly delegate to the adapter/service.
 
@@ -409,15 +459,16 @@ When maintaining this tool, check the following regularly.
 - keep `Settings` as the single source of truth for env vars
 - keep adapter logic out of the CLI and server layers
 - keep domain models stable as the public tool contract
+- keep shared scope and error primitives aligned across cluster, metrics, logs, and investigation features
 
 ## Known Limitations
 
 The current implementation has several intentional limits.
 
-- only one Kubernetes tool exists today
+- only read-only Kubernetes visibility tools exist today
 - no readiness or liveness endpoints exist yet
 - no caching strategy exists beyond process-level object reuse
-- no pagination or filtering is needed yet because `list_nodes` is cluster-scoped and small
+- no cluster-wide pod listing is exposed
 - no RBAC-aware capability discovery is implemented
 
 These are acceptable for the current project phase, but should be revisited as soon as more cluster tools are added.
@@ -426,9 +477,8 @@ These are acceptable for the current project phase, but should be revisited as s
 
 The next valuable contributions are:
 
-1. add `get_node` with the same typed and sanitized design
-2. add namespace-scoped pod listing
-3. add workload rollout status inspection
+1. add workload rollout status inspection
+2. add recent event retrieval
+3. add service and namespace inspection
 4. add health or readiness endpoints for HTTP deployments
 5. add a metrics MCP server that follows the same architecture and security rules
-

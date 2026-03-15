@@ -89,3 +89,29 @@ class KubernetesClusterService:
             count=len(nodes),
             nodes=nodes,
         )
+
+    def get_node(self, name: str) -> NodeSummary:
+        """Return a reduced summary for one node."""
+
+        try:
+            node = self._api.read_node(name=name)
+        except ApiException as exc:
+            if exc.status == 404:
+                raise KubernetesAccessError(f"Kubernetes node '{name}' was not found.") from exc
+            raise KubernetesAccessError(
+                f"Kubernetes API request failed while fetching node '{name}'."
+            ) from exc
+
+        return NodeSummary(
+            name=node.metadata.name,
+            ready=_is_ready(getattr(node.status, "conditions", None)),
+            roles=_node_roles(getattr(node.metadata, "labels", None)),
+            internal_ip=_internal_ip(getattr(node.status, "addresses", None)),
+            kubelet_version=getattr(node.status.node_info, "kubelet_version", None),
+            os_image=getattr(node.status.node_info, "os_image", None),
+            container_runtime=getattr(
+                node.status.node_info,
+                "container_runtime_version",
+                None,
+            ),
+        )

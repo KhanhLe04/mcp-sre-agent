@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from unittest.mock import patch
 
@@ -13,6 +14,8 @@ from mcp_sre_agent.adapters.kubernetes import (
     planned_connection_info,
 )
 from mcp_sre_agent.app.config import get_settings
+from mcp_sre_agent.domain.common import ErrorCategory
+from mcp_sre_agent.servers.errors import raise_tool_error
 
 
 class KubernetesSecurityTests(unittest.TestCase):
@@ -48,6 +51,19 @@ class KubernetesSecurityTests(unittest.TestCase):
             str(context.exception),
             "Kubernetes API request failed while listing nodes.",
         )
+
+    def test_raise_tool_error_serializes_safe_payload(self) -> None:
+        with self.assertRaises(RuntimeError) as context:
+            raise_tool_error(
+                category=ErrorCategory.UPSTREAM_UNAVAILABLE,
+                message="Prometheus is unavailable.",
+                retryable=True,
+            )
+
+        payload = json.loads(str(context.exception))
+        self.assertEqual(payload["category"], "upstream_unavailable")
+        self.assertEqual(payload["message"], "Prometheus is unavailable.")
+        self.assertTrue(payload["retryable"])
 
 
 if __name__ == "__main__":

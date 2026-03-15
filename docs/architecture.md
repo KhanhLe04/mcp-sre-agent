@@ -70,8 +70,8 @@ Typed models used as the public contract between adapters and MCP tools.
 
 Current responsibilities:
 
-- `NodeSummary`
-- `ListNodesResult`
+- cluster models such as `NodeSummary` and `ListNodesResult`
+- shared primitives for scope, time windows, error categories, and response metadata
 
 #### `servers/`
 
@@ -434,7 +434,7 @@ The following items are planned or strongly recommended for later development.
 
 - [x] Refactor the Kubernetes adapter into a package with `config`, `client`, and object-family modules.
 - [x] Refactor the cluster server into a package with per-tool registration modules.
-- [x] Refactor cluster domain models into a package with object-family modules.`r`n- [ ] Add shared domain models for scope, time windows, errors, and common metadata.
+- [x] Refactor cluster domain models into a package with object-family modules.`r`n- [x] Add shared domain models for scope, time windows, errors, and common metadata.
 - [ ] Add a repository-wide contributing guide.
 - [ ] Add a configuration reference document for all `MCP_*` environment variables.
 
@@ -494,4 +494,6 @@ If you are adding a new capability to this platform:
 6. update the relevant document in `docs/`
 
 This sequence should keep the platform maintainable as the number of tools increases.
+
+
 

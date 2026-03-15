@@ -10,12 +10,14 @@ from mcp_sre_agent.adapters.kubernetes.nodes import (
     KubernetesAccessError,
     KubernetesClusterService,
 )
+from mcp_sre_agent.adapters.kubernetes.pods import KubernetesPodService
 
 __all__ = [
     "KubernetesAccessError",
     "KubernetesClusterService",
     "KubernetesConfigurationError",
     "KubernetesConnectionInfo",
+    "KubernetesPodService",
     "build_core_v1_api",
     "planned_connection_info",
 ]
