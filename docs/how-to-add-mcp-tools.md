@@ -321,6 +321,42 @@ Before opening a PR or considering the tool complete, check all of these:
 - shared logic is reused instead of copied
 - docs are updated
 
+
+## Commit Rules
+
+Use Conventional Commits for this repository.
+
+Accepted examples:
+
+- `feat(cluster): add workload health tools`
+- `fix(kubernetes): handle kubeconfig fallback aliases`
+- `docs(platform): add architecture diagrams`
+- `refactor(server): extract shared tool validation helpers`
+- `test(cluster): cover workload discovery`
+- `chore(repo): update uv lockfile`
+
+Do not use `major`, `minor`, or other custom version-like prefixes in commit messages anymore.
+
+Bad examples:
+
+- `major: add new cluster tools`
+- `minor: update docs`
+- `update stuff`
+
+Preferred format:
+
+- `<type>(<scope>): <summary>`
+
+Recommended commit types:
+
+- `feat` for new user-facing capability
+- `fix` for bug fixes
+- `docs` for documentation-only changes
+- `refactor` for structural code changes without behavior change
+- `test` for test-only changes
+- `chore` for maintenance work
+
+Keep the summary short and concrete. Scope should name the area you changed, such as `cluster`, `platform`, `kubernetes`, `docs`, or `server`.
 ## Current Reference Files
 
 Use these files as the current reference implementation:
@@ -332,3 +368,4 @@ Use these files as the current reference implementation:
 - `src/mcp_sre_agent/servers/cluster/server.py`
 
 If you follow those patterns, you will land in roughly the right place.
+
