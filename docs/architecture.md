@@ -41,6 +41,23 @@ src/mcp_sre_agent/
   workflows/
 ```
 
+```mermaid
+flowchart LR
+    Client["MCP Client or Host"]
+    CLI["CLI / Runtime<br/>src/mcp_sre_agent/cli.py"]
+    Server["Server Layer<br/>src/mcp_sre_agent/servers/*"]
+    Domain["Domain Models<br/>src/mcp_sre_agent/domain/*"]
+    Adapter["Adapters / Services<br/>src/mcp_sre_agent/adapters/*"]
+    Backend["Backends<br/>Kubernetes / Prometheus / Logs"]
+
+    Client --> CLI
+    CLI --> Server
+    Server --> Domain
+    Server --> Adapter
+    Adapter --> Domain
+    Adapter --> Backend
+```
+
 ### Current implemented layers
 
 #### `app/`
@@ -111,6 +128,26 @@ Current responsibilities:
 8. The server delegates to an adapter-backed service.
 9. The adapter talks to the upstream system and returns a reduced typed model.
 10. The MCP server returns that typed result to the client.
+
+```mermaid
+sequenceDiagram
+    participant U as MCP Client
+    participant C as CLI / Runtime
+    participant S as MCP Server
+    participant A as Adapter Service
+    participant K as Upstream Backend
+
+    U->>C: Start selected server
+    C->>C: Load settings + configure logging
+    C->>S: Create FastMCP server
+    U->>S: Call MCP tool
+    S->>S: Validate input + map scope
+    S->>A: Call adapter/service
+    A->>K: Query upstream API
+    K-->>A: Raw upstream response
+    A-->>S: Reduced typed model
+    S-->>U: Typed MCP result or safe error
+```
 
 ## Architectural Principles
 
@@ -305,6 +342,29 @@ tests/
   workflows/
 ```
 
+```mermaid
+flowchart TB
+    Root["src/mcp_sre_agent"]
+    App["app"]
+    Domain["domain"]
+    Adapters["adapters"]
+    Servers["servers"]
+    Workflows["workflows"]
+    Storage["storage"]
+
+    Root --> App
+    Root --> Domain
+    Root --> Adapters
+    Root --> Servers
+    Root --> Workflows
+    Root --> Storage
+
+    Domain --> DomainCluster["cluster / metrics / investigation"]
+    Adapters --> AdapterFamilies["kubernetes / prometheus / logs / deploys"]
+    Servers --> ServerFamilies["cluster / metrics / investigation"]
+    Workflows --> WorkflowFamilies["investigation"]
+```
+
 ### Why this structure scales better
 
 #### Server modules stay readable
@@ -434,7 +494,8 @@ The following items are planned or strongly recommended for later development.
 
 - [x] Refactor the Kubernetes adapter into a package with `config`, `client`, and object-family modules.
 - [x] Refactor the cluster server into a package with per-tool registration modules.
-- [x] Refactor cluster domain models into a package with object-family modules.`r`n- [x] Add shared domain models for scope, time windows, errors, and common metadata.
+- [x] Refactor cluster domain models into a package with object-family modules.
+- [x] Add shared domain models for scope, time windows, errors, and common metadata.
 - [ ] Add a repository-wide contributing guide.
 - [ ] Add a configuration reference document for all `MCP_*` environment variables.
 
@@ -494,6 +555,7 @@ If you are adding a new capability to this platform:
 6. update the relevant document in `docs/`
 
 This sequence should keep the platform maintainable as the number of tools increases.
+
 
 
 

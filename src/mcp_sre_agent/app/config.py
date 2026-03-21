@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,8 +20,14 @@ class Settings(BaseSettings):
     sse_path: str = "/sse"
     message_path: str = "/messages/"
     streamable_http_path: str = "/mcp"
-    kubeconfig: str | None = None
-    kube_context: str | None = None
+    kubeconfig: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("MCP_KUBECONFIG", "KUBECONFIG"),
+    )
+    kube_context: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("MCP_KUBE_CONTEXT", "KUBE_CONTEXT"),
+    )
 
     model_config = SettingsConfigDict(
         env_prefix="MCP_",

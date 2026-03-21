@@ -49,6 +49,10 @@ Point to a specific kubeconfig file when needed:
 MCP_KUBECONFIG=/path/to/config uv run mcp-sre-agent cluster
 ```
 
+The server also accepts the standard fallback env names `KUBECONFIG` and `KUBE_CONTEXT`. `MCP_*` still takes precedence and should remain the project standard.
+
+At startup, the cluster server logs a sanitized Kubernetes self-check that reports whether `MCP_KUBECONFIG`, `MCP_KUBE_CONTEXT`, `KUBECONFIG`, and `KUBE_CONTEXT` are defined for the running server process.
+
 Override HTTP bind settings for local, Docker, or Kubernetes deployments:
 
 ```bash
@@ -67,3 +71,8 @@ Available server env settings:
 - `MCP_LOG_LEVEL`
 - `MCP_KUBECONFIG`
 - `MCP_KUBE_CONTEXT`
+
+Compatibility fallbacks:
+
+- `KUBECONFIG`
+- `KUBE_CONTEXT`

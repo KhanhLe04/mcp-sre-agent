@@ -47,8 +47,16 @@ def log_server_start(
 
     if kube is not None:
         logger.info(
-            "kubernetes source=%s kubeconfig=%s context=%s",
+            (
+                "kubernetes source=%s kubeconfig=%s context=%s "
+                "mcp_kubeconfig_defined=%s mcp_kube_context_defined=%s "
+                "kubeconfig_fallback_defined=%s kube_context_fallback_defined=%s"
+            ),
             kube.source,
             kube.kubeconfig_label,
             kube.context or "<default>",
+            kube.mcp_kubeconfig_defined,
+            kube.mcp_kube_context_defined,
+            kube.kubeconfig_fallback_defined,
+            kube.kube_context_fallback_defined,
         )

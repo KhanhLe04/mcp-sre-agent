@@ -104,6 +104,23 @@ Responsibilities:
 - define shared scope and error primitives
 - keep the MCP surface stable even if upstream Kubernetes objects change
 
+
+```mermaid
+flowchart LR
+    CLI["CLI / Startup"]
+    Server["Cluster MCP Server"]
+    Tools["Tool Modules<br/>nodes / pods / workloads"]
+    Adapters["Kubernetes Adapters"]
+    Domain["Typed Domain Models"]
+    K8s["Kubernetes API"]
+
+    CLI --> Server
+    Server --> Tools
+    Tools --> Adapters
+    Tools --> Domain
+    Adapters --> Domain
+    Adapters --> K8s
+```
 ## Request Flow
 
 The request flow for the current tools is:
@@ -120,6 +137,24 @@ The request flow for the current tools is:
 10. The adapter reduces the upstream object or list into typed models.
 11. The server returns the typed result or a serialized safe error payload.
 
+
+```mermaid
+sequenceDiagram
+    participant H as MCP Host / Client
+    participant S as Cluster Server
+    participant T as Tool Function
+    participant A as Kubernetes Service
+    participant K as Kubernetes API
+
+    H->>S: Call MCP tool
+    S->>T: Route request
+    T->>T: Validate input
+    T->>A: Call adapter/service
+    A->>K: Read Kubernetes resource
+    K-->>A: Raw object data
+    A-->>T: Reduced typed result
+    T-->>H: MCP response or safe error
+```
 ## Code Map
 
 The current implementation is centered in these files:
@@ -385,6 +420,21 @@ This test verifies that:
 - Kubernetes API failures return a sanitized message instead of raw exception content
 - the shared tool error helper serializes safe error payloads
 
+
+```mermaid
+flowchart TB
+    Intent["User intent<br/>check Traefik health"]
+    Discover["find_workloads"]
+    InspectPods["list_workload_pods"]
+    InspectHealth["get_workload_health"]
+    DrillPod["get_pod_status"]
+
+    Intent --> Discover
+    Discover --> InspectPods
+    Discover --> InspectHealth
+    InspectPods --> DrillPod
+    InspectHealth --> DrillPod
+```
 ## How to Extend This Tool
 
 Contributors should follow this process when adding a new Kubernetes MCP tool.
@@ -482,3 +532,4 @@ The next valuable contributions are:
 3. add service and namespace inspection
 4. add health or readiness endpoints for HTTP deployments
 5. add a metrics MCP server that follows the same architecture and security rules
+

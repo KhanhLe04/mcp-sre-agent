@@ -31,3 +31,12 @@ def build_core_v1_api() -> client.CoreV1Api:
             ) from exc
 
     return client.CoreV1Api()
+
+
+@lru_cache(maxsize=1)
+def build_apps_v1_api() -> client.AppsV1Api:
+    """Create a configured AppsV1Api client."""
+
+    # Ensure shared configuration has been loaded exactly once.
+    build_core_v1_api()
+    return client.AppsV1Api()
