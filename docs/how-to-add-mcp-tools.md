@@ -30,6 +30,7 @@ Responsibilities:
 - register the tool with `@server.tool(...)`
 - provide an LLM-friendly name and description
 - validate simple MCP inputs
+- accept typed domain models directly instead of raw `dict` payloads when the input is structured
 - call the adapter/service layer
 - map internal exceptions to safe MCP errors
 
@@ -154,6 +155,8 @@ Example:
 
 If you cannot describe the output cleanly, the tool is not designed well enough yet.
 
+If the tool needs structured input, define a Pydantic model in `domain/` first and let the server layer accept that model directly. Do not rebuild the model from raw dictionaries inside the MCP handler. The creation tools are the current example: `ContainerSpec`, `PodSpec`, `DeploymentSpec`, `CreatePodRequest`, and `CreateDeploymentRequest`.
+
 ### 3. Implement backend logic
 
 Add the real logic in an adapter/service under `adapters/`.
@@ -177,6 +180,7 @@ This layer should:
 - validate inputs
 - call the service
 - expose an intent-rich description
+- keep schema coercion out of the handler whenever possible
 
 Descriptions matter. They are part of the routing contract for the LLM.
 

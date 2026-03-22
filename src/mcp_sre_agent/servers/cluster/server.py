@@ -5,6 +5,7 @@ from __future__ import annotations
 from mcp.server.fastmcp import FastMCP
 
 from mcp_sre_agent.app.config import get_settings
+from mcp_sre_agent.servers.cluster.tools_creation import register_creation_tools
 from mcp_sre_agent.servers.cluster.tools_nodes import register_node_tools
 from mcp_sre_agent.servers.cluster.tools_pods import register_pod_tools
 from mcp_sre_agent.servers.cluster.tools_workloads import register_workload_tools
@@ -26,4 +27,5 @@ def create_cluster_server() -> FastMCP:
     register_node_tools(server)
     register_pod_tools(server)
     register_workload_tools(server)
+    register_creation_tools(server)
     return server

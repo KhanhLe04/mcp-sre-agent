@@ -4,19 +4,19 @@
 
 This document explains the Kubernetes MCP capability currently implemented in this repository. It is intended for contributors who need to understand how the server is structured, how it connects to Kubernetes, how it is configured and secured, and how to extend it safely.
 
-At the moment, the project exposes one MCP server, `cluster`, with three tools: `list_nodes`, `get_node`, and `list_namespace_pods`. The implementation is intentionally narrow: it proves the project structure, transport model, Kubernetes integration path, and baseline security posture before more tools are added.
+At the moment, the project exposes one MCP server, `cluster`, with node, pod, workload, and creation tools. The implementation is intentionally narrow: it proves the project structure, transport model, Kubernetes integration path, and baseline security posture before more tools are added.
 
 ## Current Scope
 
 The current Kubernetes MCP implementation provides:
 
 - one FastMCP server named `cluster`
-- three tools: `list_nodes`, `get_node`, and `list_namespace_pods`
+- tool families for node reads, namespace pod listing, workload discovery and health, and pod/deployment creation
 - Kubernetes client initialization through kubeconfig or in-cluster configuration
 - typed, reduced responses instead of raw Kubernetes API objects
 - configurable MCP transports and HTTP bind settings
 - sanitized startup logging and sanitized upstream error handling
-- namespace-scoped pod listing as the first non-node workload visibility tool
+- typed creation tools for pods and deployments that stay aligned with the adapter and domain model split
 
 It does not yet provide:
 
@@ -64,6 +64,7 @@ Files:
 - `src/mcp_sre_agent/servers/cluster/server.py`
 - `src/mcp_sre_agent/servers/cluster/tools_nodes.py`
 - `src/mcp_sre_agent/servers/cluster/tools_pods.py`
+- `src/mcp_sre_agent/servers/cluster/tools_creation.py`
 - `src/mcp_sre_agent/servers/errors.py`
 
 Responsibilities:
@@ -81,6 +82,7 @@ Files:
 - `src/mcp_sre_agent/adapters/kubernetes/client.py`
 - `src/mcp_sre_agent/adapters/kubernetes/nodes.py`
 - `src/mcp_sre_agent/adapters/kubernetes/pods.py`
+- `src/mcp_sre_agent/adapters/kubernetes/creation.py`
 
 Responsibilities:
 
@@ -96,6 +98,7 @@ Files:
 
 - `src/mcp_sre_agent/domain/cluster/nodes.py`
 - `src/mcp_sre_agent/domain/cluster/pods.py`
+- `src/mcp_sre_agent/domain/cluster/creation.py`
 - `src/mcp_sre_agent/domain/common/`
 
 Responsibilities:
@@ -165,16 +168,20 @@ The current implementation is centered in these files:
 - `src/mcp_sre_agent/servers/cluster/server.py`
 - `src/mcp_sre_agent/servers/cluster/tools_nodes.py`
 - `src/mcp_sre_agent/servers/cluster/tools_pods.py`
+- `src/mcp_sre_agent/servers/cluster/tools_creation.py`
 - `src/mcp_sre_agent/servers/errors.py`
 - `src/mcp_sre_agent/adapters/kubernetes/config.py`
 - `src/mcp_sre_agent/adapters/kubernetes/client.py`
 - `src/mcp_sre_agent/adapters/kubernetes/nodes.py`
 - `src/mcp_sre_agent/adapters/kubernetes/pods.py`
+- `src/mcp_sre_agent/adapters/kubernetes/creation.py`
 - `src/mcp_sre_agent/domain/cluster/nodes.py`
 - `src/mcp_sre_agent/domain/cluster/pods.py`
+- `src/mcp_sre_agent/domain/cluster/creation.py`
 - `src/mcp_sre_agent/domain/common/`
 - `tests/test_cluster_service.py`
 - `tests/test_kubernetes_security.py`
+- `tests/test_cluster_creation.py`
 
 ## Tool Contracts
 
@@ -227,6 +234,14 @@ This tool is namespace-scoped by design. It does not expose cluster-wide pod lis
 ### Why the outputs are reduced
 
 The server does not return raw Kubernetes objects because that would create unnecessary coupling to upstream schemas, increase token cost, and increase the chance of leaking irrelevant fields. The project standard is to return reduced, typed, task-specific data structures.
+
+### `create_pod`
+
+Create a pod from typed `CreatePodRequest` and `ContainerSpec` inputs. The server layer accepts the typed models directly, while `ContainerSpec` still normalizes `port` from legacy `ports` input for compatibility.
+
+### `create_deployment`
+
+Create a deployment from typed `CreateDeploymentRequest` inputs. The adapter keeps the selector and pod template labels aligned by enforcing `app=<deployment name>` on the workload labels.
 
 ## Shared Primitives Used by the Kubernetes Tools
 
@@ -420,6 +435,15 @@ This test verifies that:
 - Kubernetes API failures return a sanitized message instead of raw exception content
 - the shared tool error helper serializes safe error payloads
 
+### Creation tools and label alignment
+
+File: `tests/test_cluster_creation.py`
+
+This test verifies that:
+
+- ContainerSpec normalizes legacy port input
+- create_pod passes typed container specs through to the Kubernetes client
+- create_deployment keeps selector and pod-template labels aligned
 
 ```mermaid
 flowchart TB

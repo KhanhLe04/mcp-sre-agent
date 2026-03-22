@@ -6,6 +6,7 @@ from mcp_sre_agent.adapters.kubernetes.config import (
     KubernetesConnectionInfo,
     planned_connection_info,
 )
+from mcp_sre_agent.adapters.kubernetes.creation import KubernetesCreationService
 from mcp_sre_agent.adapters.kubernetes.nodes import (
     KubernetesAccessError,
     KubernetesClusterService,
@@ -18,6 +19,7 @@ __all__ = [
     "KubernetesClusterService",
     "KubernetesConfigurationError",
     "KubernetesConnectionInfo",
+    "KubernetesCreationService",
     "KubernetesPodService",
     "KubernetesWorkloadService",
     "build_apps_v1_api",

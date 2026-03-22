@@ -17,7 +17,7 @@ SRE-focused MCP servers for Kubernetes, metrics, logs, and investigation workflo
 4. Investigation workflow
 5. Logs and deploy correlation
 
-### Current usage
+### Current Usage
 
 Configuration precedence:
 
@@ -76,3 +76,24 @@ Compatibility fallbacks:
 
 - `KUBECONFIG`
 - `KUBE_CONTEXT`
+
+### Cluster Server Tools
+
+The cluster server provides these tools for Kubernetes operations:
+
+| Tool | Purpose |
+|------|---------|
+| `list_nodes` | List all nodes with readiness and runtime details |
+| `get_node` | Get one node by name |
+| `list_namespace_pods` | List pods in one namespace |
+| `find_workloads` | Discover services/deployments/statefulsets/daemonsets |
+| `get_pod_status` | Get pod health summary |
+| `get_deployment_status` | Get deployment rollout status |
+| `get_statefulset_status` | Get statefulset rollout status |
+| `get_daemonset_status` | Get daemonset rollout status |
+| `list_workload_pods` | List pods behind a workload/service |
+| `get_workload_health` | Get aggregated workload health |
+| `create_pod` | Create a pod with detailed specifications |
+| `create_deployment` | Create a deployment with replica management |
+
+See `docs/kubernetes-cluster-mcp.md` for tool details.
