@@ -39,12 +39,7 @@ WORKDIR /app
 
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    MCP_DEFAULT_SERVER=cluster \
-    MCP_DEFAULT_TRANSPORT=streamable-http \
-    MCP_HOST=0.0.0.0 \
-    MCP_PORT=8000 \
-    MCP_STREAMABLE_HTTP_PATH=/mcp
+    PYTHONUNBUFFERED=1
 
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 COPY --from=builder --chown=app:app /app/src /app/src
